@@ -35,6 +35,7 @@ jobs:
 
       - name: Verify WAR File
         run: ls -lh target/
+        
       # configure maven settings
       - name: configure maven settings.xml
         run: |
@@ -50,6 +51,7 @@ jobs:
            </servers>
           </settings>
           EOF
+          
       # deploy to nexus
       - name: deploy artifact to nexus
         run: |
