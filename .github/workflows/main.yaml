@@ -35,6 +35,27 @@ jobs:
 
       - name: Verify WAR File
         run: ls -lh target/
+      # configure maven settings
+      - name: configure maven settings.xml
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+           <servers>
+            <server>
+             <id>nexus</id>
+             <username>${{ secrets.NEXUS_USERNAME }}</username>
+             <password>${{ secrets.NEXUS_PASSWORD }}</password>
+            </server>
+           </servers>
+          </settings>
+          EOF
+      # deploy to nexus
+      - name: deploy artifact to nexus
+        run: |
+          mvn deploy \
+            -DskipTests \
+            -DaltDeploymentRepository=nexus::default::${{ secrets.NEXUS_REPO_URL }}
 
     
 
