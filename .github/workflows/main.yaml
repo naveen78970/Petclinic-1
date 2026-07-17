@@ -1,9 +1,9 @@
-name: CI/CD PIPELINE TO BUILD AND DEPLOY TO TOMCAT
+name: Build and Deploy Petclinic
 
 on:
   push:
     branches:
-      - master
+      - main
   workflow_dispatch:
 
 jobs:
@@ -11,53 +11,108 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Source Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-          cache: maven
 
-      - name: Validate Project
-        run: mvn validate
+      - name: Build & Test with Maven
+        run: mvn clean verify
 
-      - name: Compile Project
-        run: mvn compile
+      - name: Upload WAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: war-file
+          path: target/*.war
 
-      - name: Run Unit Tests
-        run: mvn test
 
-      - name: Package Application
-        run: mvn clean package
+  deploy-dev:
+    needs: build
+    runs-on: ubuntu-latest
 
-      - name: Verify WAR File
-        run: ls -lh target/
-        
-      # Configure Maven Settings
-      - name: Configure Maven Settings.xml
+    steps:
+      - name: Download WAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: war-file
+
+      - name: Deploy to DEV
+        env:
+          URL: ${{ secrets.TOMCAT_URL_DEV }}
+          USER: ${{ secrets.TOMCAT_USER_DEV }}
+          PASS: ${{ secrets.TOMCAT_PASS_DEV }}
         run: |
-          mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml <<EOF
-          <settings>
-            <servers>
-              <server>
-                <id>nexus</id>
-                <username>${{ secrets.NEXUS_USERNAME }}</username>
-                <password>${{ secrets.NEXUS_PASSWORD }}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
-          
-      # Deploy to Nexus
-      - name: Deploy Artifact to Nexus
+          WAR_FILE=$(ls *.war | head -n 1)
+          echo "Deploying $WAR_FILE to DEV ($URL)"
+          curl -u "$USER:$PASS" --fail -T "$WAR_FILE" \
+            "$URL/deploy?path=/Petclinic&update=true"
+
+  deploy-test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download WAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: war-file
+
+      - name: Deploy to DEV
+        env:
+          URL: ${{ secrets.TOMCAT_URL_TEST }}
+          USER: ${{ secrets.TOMCAT_USER_TEST }}
+          PASS: ${{ secrets.TOMCAT_PASS_TEST }}
         run: |
-          mvn deploy \
-            -DskipTests \
-            -DaltDeploymentRepository=nexus::default::${{ secrets.NEXUS_REPO_URL }}
+          WAR_FILE=$(ls *.war | head -n 1)
+          echo "Deploying $WAR_FILE to TEST ($URL)"
+          curl -u "$USER:$PASS" --fail -T "$WAR_FILE" \
+            "$URL/deploy?path=/Petclinic&update=true"
+
+  deploy-pre-prod:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download WAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: war-file
+
+      - name: Deploy to PRE-PROD
+        env:
+          URL: ${{ secrets.TOMCAT_URL_PRE_PROD }}
+          USER: ${{ secrets.TOMCAT_USER_PRE_PROD }}
+          PASS: ${{ secrets.TOMCAT_PASS_PRE_PROD }}
+        run: |
+          WAR_FILE=$(ls *.war | head -n 1)
+          echo "Deploying $WAR_FILE to PRE-PROD ($URL)"
+          curl -u "$USER:$PASS" --fail -T "$WAR_FILE" \
+            "$URL/deploy?path=/Petclinic&update=true"
+
+  deploy-prod:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download WAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: war-file
+
+      - name: Deploy to PROD
+        env:
+          URL: ${{ secrets.TOMCAT_URL_PROD }}
+          USER: ${{ secrets.TOMCAT_USER_PROD }}
+          PASS: ${{ secrets.TOMCAT_PASS_PROD }}
+        run: |
+          WAR_FILE=$(ls *.war | head -n 1)
+          echo "Deploying $WAR_FILE to PROD ($URL)"
+          curl -u "$USER:$PASS" --fail -T "$WAR_FILE" \
+            "$URL/deploy?path=/Petclinic&update=true"
 
     
 
