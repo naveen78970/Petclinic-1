@@ -3,7 +3,7 @@ name: Build and Deploy Petclinic
 on:
   push:
     branches:
-      - main
+       - main
   workflow_dispatch:
 
 jobs:
@@ -94,7 +94,7 @@ jobs:
             "$URL/deploy?path=/Petclinic&update=true"
 
   deploy-prod:
-    needs: build
+    name: build
     runs-on: ubuntu-latest
 
     steps:
@@ -112,8 +112,5 @@ jobs:
           WAR_FILE=$(ls *.war | head -n 1)
           echo "Deploying $WAR_FILE to PROD ($URL)"
           curl -u "$USER:$PASS" --fail -T "$WAR_FILE" \
-            "$URL/deploy?path=/Petclinic&update=true"
-
-    
-
-      
+            "URL/deploy?path=/Petclinic&update=true"
+          
