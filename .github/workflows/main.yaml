@@ -94,7 +94,7 @@ jobs:
             "$URL/deploy?path=/Petclinic&update=true"
 
   deploy-prod:
-    name: build
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
