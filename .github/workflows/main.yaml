@@ -35,5 +35,47 @@ jobs:
 
       - name: Verify WAR File
         run: ls -lh target/
+
+      # Sonarqube scan
+      - name: Sonarqube Scan
+        env:
+          SONAR_URL: ${{ secrets.SONAR_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          mvn sonar:sonar \
+             -Dsonar.projectKey=petclinic \
+             -Dsonar.projectName=petclinic \
+             -Dsonar.host.url=$SONAR_URL \
+             -Dsonar.token=$SONAR_TOKEN
+             
+       # Configure Maven Settings
+      - name: Configure Maven Settings.xml
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+           <servers>
+            <server>
+             <id>nexus</id>
+             <username>${{ secrets.NEXUS_USERNAME }}</username>
+             <password>${{ secrets.NEXUS_PASSWORD }}</password>
+            </server>
+           </servers>
+          </settings>
+          EOF
+
+      # Deploy to Nexus
+      - name: Deploy Artifact to Nexus
+        run: |
+          mvn deploy \
+            -DskipTests \
+            -DaltDeploymentRepository=nexus::default::${{ secrets.NEXUS_REPO_URL }}
+
+      # Deploy to Tomcat
+      - name: Deploy war to Tomcat
+        run: |
+               curl -v -u "${{ secrets.TOMCAT_USER}}:${{ secrets.TOMCAT_PASSWORD}}" \
+               -T target/petclinic.war \
+               "http://${{ secrets.TOMCAT_URL}}:8080/manager/text/deploy?path=/Petclinic&update=true"
         
     
