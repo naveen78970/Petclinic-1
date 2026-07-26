@@ -1,9 +1,9 @@
-name: Build and Deploy Petclinic
+name: CI/CD PIPELINE TO BUILD AND DEPLOY TO TOMCAT
 
 on:
   push:
     branches:
-       - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -11,106 +11,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+          cache: maven
 
-      - name: Build & Test with Maven
-        run: mvn clean verify
+      - name: Validate Project
+        run: mvn validate
 
-      - name: Upload WAR artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: war-file
-          path: target/*.war
+      - name: Compile Project
+        run: mvn compile
 
+      - name: Run Unit Tests
+        run: mvn test
 
-  deploy-dev:
-    needs: build
-    runs-on: ubuntu-latest
+      - name: Package Application
+        run: mvn clean package
 
-    steps:
-      - name: Download WAR artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: war-file
-
-      - name: Deploy to DEV
-        env:
-          URL: ${{ secrets.TOMCAT_URL_DEV }}
-          USER: ${{ secrets.TOMCAT_USER_DEV }}
-          PASS: ${{ secrets.TOMCAT_PASS_DEV }}
-        run: |
-          WAR_FILE=$(ls *.war | head -n 1)
-          echo "Deploying $WAR_FILE to DEV ($URL)"
-          curl -u "$USER:$PASS" --fail -T "$WAR_FILE" \
-            "$URL/deploy?path=/Petclinic&update=true"
-
-  deploy-test:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download WAR artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: war-file
-
-      - name: Deploy to DEV
-        env:
-          URL: ${{ secrets.TOMCAT_URL_TEST }}
-          USER: ${{ secrets.TOMCAT_USER_TEST }}
-          PASS: ${{ secrets.TOMCAT_PASS_TEST }}
-        run: |
-          WAR_FILE=$(ls *.war | head -n 1)
-          echo "Deploying $WAR_FILE to TEST ($URL)"
-          curl -u "$USER:$PASS" --fail -T "$WAR_FILE" \
-            "$URL/deploy?path=/Petclinic&update=true"
-
-  deploy-pre-prod:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download WAR artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: war-file
-
-      - name: Deploy to PRE-PROD
-        env:
-          URL: ${{ secrets.TOMCAT_URL_PRE_PROD }}
-          USER: ${{ secrets.TOMCAT_USER_PRE_PROD }}
-          PASS: ${{ secrets.TOMCAT_PASS_PRE_PROD }}
-        run: |
-          WAR_FILE=$(ls *.war | head -n 1)
-          echo "Deploying $WAR_FILE to PRE-PROD ($URL)"
-          curl -u "$USER:$PASS" --fail -T "$WAR_FILE" \
-            "$URL/deploy?path=/Petclinic&update=true"
-
-  deploy-prod:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download WAR artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: war-file
-
-      - name: Deploy to PROD
-        env:
-          URL: ${{ secrets.TOMCAT_URL_PROD }}
-          USER: ${{ secrets.TOMCAT_USER_PROD }}
-          PASS: ${{ secrets.TOMCAT_PASS_PROD }}
-        run: |
-          WAR_FILE=$(ls *.war | head -n 1)
-          echo "Deploying $WAR_FILE to PROD ($URL)"
-          curl -u "$USER:$PASS" --fail -T "$WAR_FILE" \
-            "$URL/deploy?path=/Petclinic&update=true"
-          
+      - name: Verify WAR File
+        run: ls -lh target/
+        
+    
